@@ -6,7 +6,8 @@ class Block:
         self.offset = offset
 
     def is_adjacent(self, block):
-        if block.offset == self.offset + self.size or self.offset == block.offset + self.size:
+        if block.offset == self.offset + self.size or \
+                self.offset == block.offset + self.size:
             return True
         return False
 
