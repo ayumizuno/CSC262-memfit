@@ -1,12 +1,19 @@
 import sys, random
 import block as blk
-import block_graphics as blk_graphics
-
-from graphics import *
 
 
 class Simulation(object):
+    """
+    This class creates a pool simulation object
+    that keeps track of its free list and used list
+    """
     def __init__(self, algorithm, size):
+        """
+        This creates a simulation of a pool based
+        on a given algorithm and pool size
+        :param algorithm: algorithm to run the simulation with
+        :param size: size of the pool
+        """
         self.algorithm = algorithm
         self.size = size
         self.free_list = []
@@ -15,6 +22,9 @@ class Simulation(object):
         self.failed = 0
 
     def print_lists(self):
+        """
+        prints both free and used lists in offset order
+        """
         print("Free List")
         self.free_list.sort(key=lambda block: block.offset)
         for block in self.free_list:
@@ -31,6 +41,13 @@ class Simulation(object):
                   "name:", block.name)
 
     def get_stats(self):
+        """
+        Calculates percent of free and used space
+        in the pool and returns those values
+        :return:
+            pct_free: percent of free space in pool
+            pct_used: percent of used space in pool
+        """
         free = 0
         used = 0
         for block in self.free_list:
@@ -42,6 +59,14 @@ class Simulation(object):
         return pct_free, pct_used
 
     def alloc(self, name, size):
+        """
+        Gets a block from the algorithm being run and
+        splits the block based on the input size given.
+        If there is no available block of desired size,
+        count the allocation as a failure.
+        :param name: name of block to allocate
+        :param size: size of block desired
+        """
         if self.algorithm == "first":
             block = self.alloc_first(size)
         elif self.algorithm == "best":
@@ -59,8 +84,17 @@ class Simulation(object):
             self.block_split(block, name, size)
         else:
             self.failed += 1
+            print("Failed allocation of", name)
 
     def find(self, size):
+        """
+        Search for a block in the free_list with size
+        greater than or equal to the specified size.
+        :param size: min size of block wanted
+        :return:
+            block: next available block from free list
+            None: if there is no such block
+        """
         for block in self.free_list:
             if block.size >= size:
                 return block
@@ -68,11 +102,13 @@ class Simulation(object):
 
     def find_with_index(self, size, start, stop):
         """
-        search for the next available block in free list in range(start, stop)
+        Search for the next available block in free list in range(start, stop)
         :param size: size of space needed
         :param start: index at which to start search
         :param stop: index at which to stop search
-        :return: next available block from free list
+        :return:
+            block: next available block from free list
+            None: if there is no such block
         """
         for block in self.free_list:
             if block.offset >= start and block.offset <= stop:
@@ -82,19 +118,42 @@ class Simulation(object):
         return None
 
     def alloc_first(self, size):
+        """
+        Returns the next available space based on the first-fit algorithm
+        :param size: size of block wanted
+        :return: appropriate block based on this algorithm
+        """
         self.free_list.sort(key=lambda block: block.offset)
         return self.find(size)
 
     def alloc_best(self, size):
+        """
+        Returns the next available space based on the best-fit algorithm
+        :param size: size of block wanted
+        :return: appropriate block based on this algorithm
+        """
         self.free_list.sort(key=lambda block: block.size)
         return self.find(size)
 
     def alloc_worst(self, size):
+        """
+        Returns the next available space based on the worst-fit algorithm
+        :param size: size of block wanted
+        :return: appropriate block based on this algorithm
+        """
         self.free_list.sort(key=lambda block: block.size, reverse=True)
         return self.find(size)
 
     def alloc_next(self, size):
-        # returns next available block after last used block
+        """
+        Returns next available space based on the next-fit algorithm.
+        Uses the last_offset property to keep track of the last position
+        on the pool.
+        :param size: size of block wanted
+        :return:
+            block: appropriate block based on this algorithm
+        """
+        print(self.last_offset)
         self.free_list.sort(key=lambda block: block.offset)
         block = self.find_with_index(size, self.last_offset, sim.size)
         if block is not None:
@@ -105,11 +164,20 @@ class Simulation(object):
             return block
 
     def alloc_random(self, size):
+        """
+        Randomly shuffles the free_list and finds returns the first
+        available block.
+        :param size: size of block wanted
+        :return: appropriate block based on this algorithm
+        """
         random.shuffle(self.free_list)
         return self.find(size)
 
     def free(self, name):
-        #free block in used_list and add it back to free_list
+        """
+        Free block in used_list and add it back to free_list.
+        :param name: name of block to free from used_list
+        """
         for block in self.used_list:
             if block.name == name:
                 self.used_list.remove(block)
@@ -117,11 +185,15 @@ class Simulation(object):
                 return
 
     def compact_free(self):
+        """
+        Go through the free list and compact adjacent blocks
+        so that they become one free space.
+        """
         self.free_list.sort(key=lambda block: block.offset)
         copy_list = []
-        copy_block = blk.Block()
+        copy_block = blk.Block("free",0,0)
         i = 0
-        while i < len(self.free()):
+        while i < len(self.free_list):
             if copy_block.is_adjacent(self.free_list[i]):
                 copy_block.size += self.free_list[i].size
             else:
@@ -134,6 +206,13 @@ class Simulation(object):
         self.free_list = copy_list
 
     def block_split(self, block, new_name, size):
+        """
+        Construct one or two new blocks given a block and a
+        specific size to allocate.
+        :param block: block to split
+        :param new_name: name of new block
+        :param size: size to allocate from the given block
+        """
         if size > block.size:
             raise ValueError("Shouldn't be splitting this block with size requested.")
         if size == block.size:
@@ -148,82 +227,54 @@ class Simulation(object):
 
 
 def start(f):
-    # create Simulation with pool block in free_list
+    """
+    Sets up the program by creating a simulation object
+    with a block of the size given in the input file in the
+    free_list
+    :param f: input file
+    :return:
+        sim: the Simulation object
+    """
     pool_line = f.readline().strip("\n").split(" ")
     sim = Simulation(pool_line[1], int(pool_line[2]))
     sim.free_list = [blk.Block("pool", int(pool_line[2]), 0)]
     return sim
 
 
-def clear_text(win):
-    for item in win.items:
-        if type(item) == Text:
-            item.undraw()
-    win.update()
-
-
-def redraw(free, used, win):
-
-    for block in used:
-        used_block = blk_graphics.BlockGraphics(block.name, block.size, block.offset)
-        used_block.unit.setFill("pink")
-        used_block.display(win)
-
-    for free_block in free:
-        used_block = blk_graphics.BlockGraphics(free_block.name, free_block.size, free_block.offset)
-        used_block.unit.setFill("white")
-        used_block.display_free(win)
-
-
-def set_graphics():
-    """
-    set up GUI window with pool rectangle bar
-    """
-    win = GraphWin('GUI', 1100, 500)
-    pool = Rectangle(Point(50, 100), Point(1050, 200))
-    pool.draw(win)
-    return win
-
-
 def print_stats(pct_free, pct_used, failed):
+    """
+    Prints how much of the space is used and free, as
+    well as the number of failed allocations.
+    :param pct_free: Percent of space free
+    :param pct_used: Percent of space used
+    :param failed: number of failed allocations
+    """
     print("Percent of used memory: ", pct_used, "%", sep="")
     print("Percent of free memory: ", pct_free, "%", sep="")
     print("Number of failed allocations:", failed)
 
 
 if __name__ == '__main__':
-    #win = set_graphics()
     f = open(sys.argv[1], "r")
     sim = start(f)
 
     for line in f:
-        #current processing line
         line = line.strip("\n")
         if len(line) > 1:
             print(line)
             line = line.split(" ")
-            #line_text = Text(Point(500, 300), line)
-            #line_text.draw(win)
-
             if "alloc" in line:
                 sim.alloc(line[1], int(line[2]))
             elif "free" in line:
                 sim.free(line[1])
+                sim.compact_free()
             else:
                 raise ValueError("Invalid line in input file.")
             sim.print_lists()
             print()
-
-            #redraw(sim.free_list, sim.used_list, win)
-            #time.sleep(2)
-            #clear_text(win)
+        print()
 
     pct_free, pct_used = sim.get_stats()
     print_stats(pct_free, pct_used, sim.failed)
 
-
-
     f.close()
-
-   #win.getMouse()
-   #win.close()

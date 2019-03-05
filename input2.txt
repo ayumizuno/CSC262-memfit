@@ -1,0 +1,9 @@
+pool next 1000
+alloc A 200
+alloc B 400
+alloc C 100
+free B
+alloc D 100
+alloc E 200
+free E
+alloc F 300
